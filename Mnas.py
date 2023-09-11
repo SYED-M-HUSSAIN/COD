@@ -1,79 +1,67 @@
 import tensorflow as tf
-from tensorflow.keras.layers import Input, Conv2D, BatchNormalization, ReLU, GlobalAveragePooling2D, Dense
+from tensorflow.keras.layers import Input, GlobalAveragePooling2D, Dense
 from tensorflow.keras.models import Model
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
-# Define MnasNet architecture
-def mnasnet_model(input_shape=(224, 224, 3), num_classes=2):
+# Define your data directories
+train_data_dir = 'data/train'
+validation_data_dir = 'data/validation'
+
+# Define hyperparameters
+input_shape = (224, 224, 3)
+num_classes = 2
+batch_size = 32
+epochs = 10
+
+# Define the MnasNet architecture
+def create_mnasnet_model(input_shape, num_classes):
     input_tensor = Input(shape=input_shape)
-    
-    # Stem
-    x = Conv2D(32, kernel_size=3, strides=2, padding='valid')(input_tensor)
-    x = BatchNormalization()(x)
-    x = ReLU()(x)
-    
-    # Depthwise Separable Conv Blocks
-    for filters, num_blocks, stride in [(32, 3, 1), (64, 4, 2), (128, 2, 2), (256, 2, 2)]:
-        for _ in range(num_blocks):
-            # Depthwise Convolution
-            x = tf.keras.layers.DepthwiseConv2D(kernel_size=3, strides=stride, padding='same')(x)
-            x = BatchNormalization()(x)
-            x = ReLU()(x)
-            
-            # Pointwise Convolution
-            x = Conv2D(filters, kernel_size=1, strides=1, padding='same')(x)
-            x = BatchNormalization()(x)
-            x = ReLU()(x)
-    
-    # Global Average Pooling
-    x = GlobalAveragePooling2D()(x)
-    
-    # Classifier
-    output_tensor = Dense(num_classes, activation='softmax')(x)
-    
-    model = Model(inputs=input_tensor, outputs=output_tensor)
+    base_model = tf.keras.applications.MnasNet(input_tensor=input_tensor, weights=None, include_top=False)
+    x = GlobalAveragePooling2D()(base_model.output)
+    x = Dense(128, activation='relu')(x)
+    output = Dense(num_classes, activation='softmax')(x)
+    model = Model(inputs=input_tensor, outputs=output)
     return model
 
-# Create the MnasNet model
-model = mnasnet_model()
+# Create the model
+model = create_mnasnet_model(input_shape, num_classes)
 
 # Compile the model
-model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-# Data augmentation and loading
-batch_size = 32
-image_size = (224, 224)
-
-train_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
-    rescale=1./255,
-    rotation_range=20,
-    width_shift_range=0.2,
-    height_shift_range=0.2,
-    horizontal_flip=True,
-    validation_split=0.2
+# Data augmentation for the training data
+train_datagen = ImageDataGenerator(
+    rescale=1.0/255.0,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True
 )
 
+# No data augmentation for validation data
+validation_datagen = ImageDataGenerator(rescale=1.0/255.0)
+
+# Create data generators
 train_generator = train_datagen.flow_from_directory(
-    'data_dir',
-    target_size=image_size,
+    train_data_dir,
+    target_size=input_shape[:2],
     batch_size=batch_size,
-    class_mode='binary',
-    subset='training'
+    class_mode='categorical'
 )
 
-validation_generator = train_datagen.flow_from_directory(
-    'data_dir',
-    target_size=image_size,
+validation_generator = validation_datagen.flow_from_directory(
+    validation_data_dir,
+    target_size=input_shape[:2],
     batch_size=batch_size,
-    class_mode='binary',
-    subset='validation'
+    class_mode='categorical'
 )
 
 # Train the model
-epochs = 10
-history = model.fit(
+model.fit(
     train_generator,
-    epochs=epochs,
-    validation_data=validation_generator
+    steps_per_epoch=train_generator.samples // batch_size,
+    validation_data=validation_generator,
+    validation_steps=validation_generator.samples // batch_size,
+    epochs=epochs
 )
 
 # Save the trained model

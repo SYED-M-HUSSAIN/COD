@@ -2,6 +2,7 @@ import tensorflow as tf
 from tensorflow.keras.layers import Input, GlobalAveragePooling2D, Dense
 from tensorflow.keras.models import Model
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.applications import MobileNetV2
 
 # Define your data directories
 train_data_dir = 'data/train'
@@ -13,10 +14,12 @@ num_classes = 2
 batch_size = 32
 epochs = 10
 
-# Define the MnasNet architecture
-def create_mnasnet_model(input_shape, num_classes):
+# Create the MobileNetV2 model
+def create_mobilenetv2_model(input_shape, num_classes):
     input_tensor = Input(shape=input_shape)
-    base_model = tf.keras.applications.MnasNet(input_tensor=input_tensor, weights=None, include_top=False)
+    base_model = MobileNetV2(input_shape=input_shape, include_top=False, weights='imagenet')
+    for layer in base_model.layers:
+        layer.trainable = False
     x = GlobalAveragePooling2D()(base_model.output)
     x = Dense(128, activation='relu')(x)
     output = Dense(num_classes, activation='softmax')(x)
@@ -24,10 +27,10 @@ def create_mnasnet_model(input_shape, num_classes):
     return model
 
 # Create the model
-model = create_mnasnet_model(input_shape, num_classes)
+model = create_mobilenetv2_model(input_shape, num_classes)
 
 # Compile the model
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
 # Data augmentation for the training data
 train_datagen = ImageDataGenerator(
@@ -65,4 +68,4 @@ model.fit(
 )
 
 # Save the trained model
-model.save('mnasnet_binary_classification.h5')
+model.save('mobilenetv2_binary_classification.h5')

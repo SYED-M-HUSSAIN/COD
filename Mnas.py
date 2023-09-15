@@ -127,5 +127,6 @@ with torch.no_grad():
         _, predicted = torch.max(outputs.data, 1)
         total += labels.size(0)
         correct += (predicted == labels).sum().item()
+        #https://mega.nz/file/APFDSKRJ#y2OxCdslHUg5vjTY5kerhQWaM-exbrkkFjFIPo7bLss
 
 print(f'Accuracy on test set: {(100 * correct / total):.2f}%')

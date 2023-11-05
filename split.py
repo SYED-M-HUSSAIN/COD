@@ -21,6 +21,8 @@ label_files = os.listdir(label_dir)
 random.shuffle(image_files)
 random.shuffle(label_files)
 
+https://mega.nz/file/ob1CjQCA#6N6tJqNLbm_yPgPrXzF0dcqRJ6sqL9NiIDHsUM8h9DY
+
 # Calculate the number of samples for the training and validation sets based on the desired ratio
 total_samples = len(image_files)
 train_ratio = 0.85

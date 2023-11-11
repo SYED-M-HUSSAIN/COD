@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
-
+https://mega.nz/file/Aa8BWTaL#jnr53VA4UIe8tZf0LOr3EOgaH0KPXq_LzB84n8-w89w
 # Define MnasNet architecture
 class SepConvBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1):

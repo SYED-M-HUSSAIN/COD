@@ -1,54 +1,75 @@
+# img3 = img2.astype(np.uint8)       
+# # find contours in the thresholded image
+# cnts = cv2.findContours(img3.copy(), cv2.RETR_EXTERNAL,
+#                         cv2.CHAIN_APPROX_SIMPLE)
+# cnts = imutils.grab_contours(cnts)
+# print("[INFO] {} unique contours found".format(len(cnts)))
+
+import cv2
+import numpy as np
 import os
-import random
-import shutil
-https://mega.nz/file/8XFHlYpR#GRh-EkrGA5XvkloOYjDar-QipoxGiQkt48dt6NTd4QM
-# Define your dataset directory and subdirectories
-base_dir = 'dataset'  # Change this to your dataset directory
-image_dir = os.path.join(base_dir, 'images')  # Change to your image directory
-label_dir = os.path.join(base_dir, 'labels')  # Change to your label directory
+import imutils
 
-# Create the train and validation directories if they don't exist
-train_dir = os.path.join(base_dir, 'train')
-val_dir = os.path.join(base_dir, 'val')
-os.makedirs(train_dir, exist_ok=True)
-os.makedirs(val_dir, exist_ok=True)
+# folder path of the segmented images
+folder_path = r'/home/hussain/Downloads/COD_data_sets/COD10K-v3/Test/GT_Object'
+check_path=r'/home/hussain/Downloads/COD_data_sets/COD10K-v3/Test/Labels'
+# image_path = r"/home/hussain/Downloads/COD_data_sets/COD10K-v3/Test/Image"
+i = 0
+for filename in os.listdir(folder_path):
+    # file_name=os.path.splitext(filename)[0] + '.txt'
+    # possible_path=os.path.join(check_path,file_name)
+    # if os.path.exists(possible_path):
+        #print('here')
+        # if filename not in os.listdir(image_path):
+        #     print('image not found')
+        #     continue
+        # Construct the full file path
+    file_path = os.path.join(folder_path, filename)
 
-# List the files in your image and label directories
-image_files = os.listdir(image_dir)
-label_files = os.listdir(label_dir)
+    # Load the segmented image
+    segmented_image = cv2.imread(file_path)
 
-# Shuffle the lists of image and label files to ensure a random distribution
-random.shuffle(image_files)
-random.shuffle(label_files)
+    # Convert the segmented image to grayscale
+    gray_image = cv2.cvtColor(segmented_image, cv2.COLOR_BGR2GRAY)
 
-https://mega.nz/file/ob1CjQCA#6N6tJqNLbm_yPgPrXzF0dcqRJ6sqL9NiIDHsUM8h9DY
+    # Threshold the grayscale image to create a binary mask
+    _, binary_mask = cv2.threshold(gray_image, 1, 255, cv2.THRESH_BINARY)
 
-# Calculate the number of samples for the training and validation sets based on the desired ratio
-total_samples = len(image_files)
-train_ratio = 0.85
-val_ratio = 0.15
-num_train_samples = int(total_samples * train_ratio)
-num_val_samples = total_samples - num_train_samples
+    # find contours in the thresholded image
+    cnts = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL,
+                            cv2.CHAIN_APPROX_SIMPLE)
+    cnts = imutils.grab_contours(cnts)
+    print("[INFO] {} unique contours found".format(len(cnts)))
+    # print(filename)
 
-# Copy the images and labels to the training and validation directories
-for i in range(num_train_samples):
-    image_src = os.path.join(image_dir, image_files[i])
-    label_src = os.path.join(label_dir, label_files[i])
-    
-    image_dst = os.path.join(train_dir, image_files[i])
-    label_dst = os.path.join(train_dir, label_files[i])
-    
-    shutil.copy(image_src, image_dst)
-    shutil.copy(label_src, label_dst)
+    # Labels folder 
+    # newFileName = str(int(filename[:5]) + 141) + '.jpg'
+    # output_folder_path=r'/home/hussain/Downloads/MoCA-Mask-Pseudo/MoCA-Video-Train/jerboa/Labels'
+    output_file = os.path.join(check_path, filename)
+    output_file_path = os.path.splitext(output_file)[0]+ '.txt'
+    i += 1
+    with open(output_file_path, 'w') as output_file:
+        for j in cnts:
+            rect = cv2.boundingRect(j)
+            x,y,w,h = rect
+            # cv2.rectangle(segmented_image, (x,y),(x+w,y+h),(255,0,0),2) # to draw the bbox
 
-for i in range(num_train_samples, total_samples):
-    image_src = os.path.join(image_dir, image_files[i])
-    label_src = os.path.join(label_dir, label_files[i])
-    
-    image_dst = os.path.join(val_dir, image_files[i])
-    label_dst = os.path.join(val_dir, label_files[i])
-    
-    shutil.copy(image_src, image_dst)
-    shutil.copy(label_src, label_dst)
+            # Normalizing for yolo
+            x_center = x + (w / 2)
+            y_center = y + (h / 2)
+            normalized_x = x_center / segmented_image.shape[1]
+            normalized_y = y_center / segmented_image.shape[0]
+            normalized_width = w / segmented_image.shape[1]
+            normalized_height = h / segmented_image.shape[0]
+            print(x_center," ",y_center,"  ",w,"  ",h)
+            
 
-print(f"Split {total_samples} samples into {num_train_samples} for training and {num_val_samples} for validation.")
+            # with open(output_file_path, 'w') as output_file:
+            output_file.write(f'{0} {normalized_x:.6f} {normalized_y:.6f} {normalized_width:.6f} {normalized_height:.6f}\n')
+
+            # For displaying the images
+            # segmented_image = cv2.resize(segmented_image, (480, 480))
+            # cv2.imshow(str(i), segmented_image)
+            # cv2.waitKey(0)
+            # i += 1
+print(i, 'labels made')
